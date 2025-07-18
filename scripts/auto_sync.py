@@ -12,6 +12,7 @@ from github import Github, GithubException
 
 # --- Basic configuration ---
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
+SCRIPT_DIR = Path(__file__).resolve().parent
 
 
 class BranchSyncer:
@@ -230,8 +231,8 @@ def main():
     parser = argparse.ArgumentParser(description="Automate syncing of GitHub release branches via Pull Requests.")
     parser.add_argument(
         "--config",
-        default="config.json",
-        help="Path to the JSON configuration file. Defaults to 'config.json' in the current directory."
+        default=str(SCRIPT_DIR / "config.json"),
+        help="Path to the JSON configuration file. Defaults to 'config.json' in the script's directory."
     )
     parser.add_argument(
         "--dry-run",
@@ -245,8 +246,8 @@ def main():
     )
     parser.add_argument(
         "--log-file",
-        default=".log",
-        help="Path to a file where logs will be stored. Logs are appended to the file."
+        default=str(SCRIPT_DIR / ".log"),
+        help="Path to a file where logs will be stored. Defaults to '.log' in the script's directory."
     )
     args = parser.parse_args()
 
@@ -256,10 +257,10 @@ def main():
         logging.info("--- Starting in DRY RUN mode. No changes will be pushed to GitHub. ---")
 
     # Load environment variables from .env file
-    load_dotenv()
+    load_dotenv(dotenv_path=SCRIPT_DIR / ".env")
     github_token = os.getenv("GITHUB_TOKEN")
     if not github_token:
-        logging.error("GITHUB_TOKEN not found in environment variables. Please create a .env file or export it.")
+        logging.error(f"GITHUB_TOKEN not found in environment variables or at {SCRIPT_DIR / '.env'}. Please create a .env file or export it.")
         sys.exit(1)
 
     # Load configuration
@@ -274,8 +275,7 @@ def main():
         sys.exit(1)
 
     # Define a persistent local directory for the repository clone to speed up subsequent runs.
-    script_dir = Path(__file__).resolve().parent
-    work_dir = script_dir / ".tmp"
+    work_dir = SCRIPT_DIR / ".tmp"
     work_dir.mkdir(exist_ok=True)
     logging.info(f"Using working directory: {work_dir}")
 
