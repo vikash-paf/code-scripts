@@ -231,8 +231,8 @@ def main():
     parser = argparse.ArgumentParser(description="Automate syncing of GitHub release branches via Pull Requests.")
     parser.add_argument(
         "--config",
-        default=str(SCRIPT_DIR / "config.json"),
-        help="Path to the JSON configuration file. Defaults to 'config.json' in the script's directory."
+        default="config.json",
+        help="Path to the JSON configuration file. Defaults to 'config.json' in the current directory."
     )
     parser.add_argument(
         "--dry-run",
@@ -246,8 +246,8 @@ def main():
     )
     parser.add_argument(
         "--log-file",
-        default=str(SCRIPT_DIR / ".log"),
-        help="Path to a file where logs will be stored. Defaults to '.log' in the script's directory."
+        default=".log",
+        help="Path to a file where logs will be stored. Logs are appended to the file."
     )
     args = parser.parse_args()
 
@@ -257,10 +257,10 @@ def main():
         logging.info("--- Starting in DRY RUN mode. No changes will be pushed to GitHub. ---")
 
     # Load environment variables from .env file
-    load_dotenv(dotenv_path=SCRIPT_DIR / ".env")
+    load_dotenv()
     github_token = os.getenv("GITHUB_TOKEN")
     if not github_token:
-        logging.error(f"GITHUB_TOKEN not found in environment variables or at {SCRIPT_DIR / '.env'}. Please create a .env file or export it.")
+        logging.error("GITHUB_TOKEN not found in environment variables. Please create a .env file or export it.")
         sys.exit(1)
 
     # Load configuration
@@ -275,7 +275,8 @@ def main():
         sys.exit(1)
 
     # Define a persistent local directory for the repository clone to speed up subsequent runs.
-    work_dir = SCRIPT_DIR / ".tmp"
+    script_dir = Path(__file__).resolve().parent
+    work_dir = Path(".tmp")
     work_dir.mkdir(exist_ok=True)
     logging.info(f"Using working directory: {work_dir}")
 

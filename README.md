@@ -26,14 +26,14 @@ This tool is designed to be run in a CI/CD environment (like GitHub Actions) or 
 ## 🛠️ Setup
 
 1.  **Install Dependencies**:
-    Navigate to the `code-scripts` directory and install the required Python packages.
+    Install the required Python packages from the project root.
 
     ```bash
     pip install -r requirements.txt
     ```
 
 2.  **Create Environment File**:
-    Create a file named `.env` inside the `code-scripts` directory. This file will securely store your GitHub token.
+    Create a file named `.env` in the project root. This file will securely store your GitHub token.
 
     **`.env`**
     ```
@@ -41,10 +41,10 @@ This tool is designed to be run in a CI/CD environment (like GitHub Actions) or 
     # Make sure it has the "repo" scope.
     GITHUB_TOKEN="your_github_personal_access_token_here"
     ```
-    > **Note**: The `.gitignore` file is already configured to ignore `.env` files in this directory, preventing your token from being accidentally committed.
+    > **Note**: The `.gitignore` file is already configured to ignore `.env` files, preventing your token from being accidentally committed.
 
 3.  **Create Configuration File**:
-    Create a file named `config.json` in the `code-scripts` directory. This file defines which branches to sync.
+    Create a file named `config.json` in the project root. This file defines which branches to sync.
 
     **`config.json`**
     ```json
@@ -78,28 +78,62 @@ This tool is designed to be run in a CI/CD environment (like GitHub Actions) or 
 
 ## 🏃‍♀️ Usage
 
-Run the script from within the `code-scripts` directory.
+Run the script from the project root directory.
 
 ### Standard Run
 This will execute the sync process based on your `config.json`.
 
 ```bash
-python auto_sync.py
+python scripts/auto_sync.py
 ```
 
 ### Dry Run
 To see what actions the script would take without creating/updating PRs or pushing to the remote repository, use the `--dry-run` flag.
 
 ```bash
-python auto_sync.py --dry-run
+python scripts/auto_sync.py --dry-run
 ```
 
 ### Using a Custom Config File
 You can specify a different path for your configuration file using the `--config` flag.
 
 ```bash
-python auto_sync.py --config /path/to/my_special_config.json
+python scripts/auto_sync.py --config /path/to/my_special_config.json
 ```
+
+## 🗓️ Automated Scheduling (Optional)
+
+You can run this script automatically on a schedule using `cron` (on macOS and Linux). This is useful for keeping branches in sync without manual intervention.
+
+### Cron Setup (macOS & Linux)
+
+1.  **Open your user's crontab file for editing:**
+    ```bash
+    crontab -e
+    ```
+
+2.  **Add a new line to schedule the script.** The following example runs the script every hour.
+
+    Make sure to replace `/path/to/your/project/root` with the **absolute path** to your project's root directory.
+
+    ```cron
+    # Run the branch sync script every hour
+    0 * * * * cd /path/to/your/project/root && python3 scripts/auto_sync.py >> cron.log 2>&1
+    ```
+
+    **Breakdown of the cron job:**
+    - `0 * * * *`: This is the schedule. It means "at minute 0 of every hour of every day".
+    - `cd /path/to/your/project/root`: Navigates to the project's root directory. **This is crucial for the script to find its configuration files (`.env`, `config.json`).**
+    - `python3 scripts/auto_sync.py`: Executes the script. You may need to use the full path to your Python executable (e.g., `/usr/bin/python3`).
+    - `>> cron.log 2>&1`: This redirects all output (both standard output and errors) to a file named `cron.log` inside your project root. This allows you to review the script's execution history.
+
+    > **Note on Python Virtual Environments:** If you installed dependencies in a virtual environment, you must use the Python interpreter from that environment.
+    >
+    > For example:
+    > ```cron
+    > # Using a python venv
+    > 0 * * * * cd /path/to/your/project/root && /path/to/your/venv/bin/python scripts/auto_sync.py >> cron.log 2>&1
+    > ```
 
 ## 🧠 How It Works
 
