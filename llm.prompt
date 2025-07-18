@@ -1,0 +1,41 @@
+You are a senior Python developer with expertise in Git automation, GitHub SDK integration, and CLI tooling. 
+Write a robust, maintainable, and production-grade Python CLI tool that automates syncing GitHub release branches by creating pull requests between them.
+
+---
+
+### 📦 Functional Overview:
+
+- Automate GitHub PR creation between configured `base` and `destination` branches.
+- Use a JSON config to define sync logic between multiple branches.
+- Handle clean merges, conflicts, idempotent re-runs, and existing PR updates.
+
+---
+
+### 🛠 Technical Constraints:
+- Use `GitPython` for Git operations (clone, checkout, fetch, merge, diff).
+- Use `PyGithub` for GitHub API (PR create/update/status).
+- Use `python-dotenv` to load a GitHub token from `.env`.
+- Python version: 3.9+.
+- The script must be:
+  - **Idempotent** (no duplicate PRs or redundant operations)
+  - **Independent** (no user prompts)
+  - **CLI-invokable** via `python sync_prs.py [--config path/to/config.json] [--dry-run]`
+
+---
+### ⚙️ Input Configuration Schema (JSON):
+The sync configuration will be stored in a JSON file like this:
+```json
+{
+  "branches": [
+    {
+      "base": "release-1.0",
+      "destinations": ["release-1.1", "release-1.2"]
+    },
+    {
+      "base": "release-1.1",
+      "destinations": ["release-1.2"]
+    }
+  ],
+  "repo_url": "git@github.com:pafrepo/api-app.git",
+  "conflict_branch_prefix": "vikash/sync-"
+}
