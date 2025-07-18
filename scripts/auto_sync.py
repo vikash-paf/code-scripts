@@ -12,7 +12,7 @@ from github import Github, GithubException
 
 # --- Basic configuration ---
 LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
-SCRIPT_DIR = Path(__file__).resolve().parent
+
 
 
 class BranchSyncer:
