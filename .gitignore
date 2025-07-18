@@ -1,0 +1,6 @@
+.aider*
+.env
+config.json
+.venv
+.tmp/
+.log*
