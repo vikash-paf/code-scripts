@@ -18,13 +18,14 @@ LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 class BranchSyncer:
     """Manages syncing of branches by creating or updating pull requests."""
 
-    def __init__(self, config: dict, github_token: str, work_dir: str, dry_run: bool = False, merge_prs: bool = False):
+    def __init__(self, config: dict, github_token: str, work_dir: str, dry_run: bool = False, merge_prs: bool = False, auto_resolve_docs: bool = False):
         self.config = config
         self.repo_url = config["repo_url"]
         self.repo_name = self.repo_url.split("/")[-1].replace(".git", "")
         self.conflict_prefix = config.get("conflict_branch_prefix", "sync/")
         self.dry_run = dry_run
         self.merge_prs = merge_prs
+        self.auto_resolve_docs = auto_resolve_docs
         self.work_dir = Path(work_dir)
         self.repo_path = self.work_dir / self.repo_name
 
@@ -92,12 +93,19 @@ class BranchSyncer:
             except GitCommandError:
                 conflicting_files_str = self.repo.git.diff('--name-only', '--diff-filter=U')
                 conflicting_files = [f for f in conflicting_files_str.split('\n') if f]
-                logging.error(
-                    f"CONFLICT: Merge conflict detected between '{base_branch}' and '{dest_branch}'. "
-                    f"Conflicting files: [{', '.join(conflicting_files)}]. Skipping PR creation."
-                )
-                # Abort the merge to clean up the repository state
-                self.repo.git.merge("--abort")
+                self.repo.git.merge("--abort")  # Abort test merge
+
+                if self.auto_resolve_docs and conflicting_files and all(f.startswith('docs/api/v2/') for f in conflicting_files):
+                    logging.info(
+                        f"All conflicts are in 'docs/api/v2/'. Attempting to auto-resolve for "
+                        f"'{base_branch}' -> '{dest_branch}'"
+                    )
+                    self._auto_resolve_docs_conflict(base_branch, dest_branch)
+                else:
+                    logging.error(
+                        f"CONFLICT: Merge conflict detected between '{base_branch}' and '{dest_branch}'. "
+                        f"Conflicting files: [{', '.join(conflicting_files)}]. Skipping PR creation."
+                    )
                 return  # Skip this pair
 
             # 4. Create or update pull request directly
@@ -112,6 +120,45 @@ class BranchSyncer:
             # Go back to a clean state for the next pair
             self.repo.git.checkout(self.gh_repo.default_branch)
 
+    def _auto_resolve_docs_conflict(self, base_branch: str, dest_branch: str):
+        """
+        Resolves a documentation merge conflict by creating a new branch, merging with
+        'ours' strategy, and creating a PR.
+        """
+        if self.dry_run:
+            logging.info(f"[DRY RUN] Would auto-resolve docs conflict for '{base_branch}' -> '{dest_branch}'.")
+            return
+
+        resolution_branch = f"{self.conflict_prefix}{base_branch.replace('/', '_')}-into-{dest_branch.replace('/', '_')}"
+        pr_title = f"[Automated Sync with Fix] Sync {base_branch} into {dest_branch}"
+
+        try:
+            # Get a clean start on the destination branch
+            self.repo.git.checkout(dest_branch)
+            self.repo.git.pull('origin', dest_branch)
+
+            # Create/reset the resolution branch from the latest state of the destination
+            self.repo.git.checkout('-B', resolution_branch)
+
+            # Merge using 'ours' strategy. This accepts 'our' changes for all conflicted files.
+            logging.info(f"Merging '{base_branch}' into '{resolution_branch}' with '-X ours' strategy.")
+            self.repo.git.merge(f'origin/{base_branch}', '-Xours', '--no-ff', '--no-edit')
+
+            # Push the new branch with the resolved merge
+            logging.info(f"Pushing resolved branch '{resolution_branch}' to origin.")
+            self.repo.remotes.origin.push(resolution_branch, force=True)
+
+            # Create a PR from the resolution branch to the original destination
+            self._create_or_update_pr(resolution_branch, dest_branch, pr_title)
+
+        except GitCommandError as e:
+            logging.error(f"Failed to auto-resolve docs conflict for '{base_branch}' -> '{dest_branch}': {e}")
+            # Clean up local state on failure
+            self.repo.git.checkout(self.gh_repo.default_branch)
+            try:
+                self.repo.git.branch('-D', resolution_branch)
+            except GitCommandError:
+                pass  # Branch might not exist if checkout failed early
 
     def _create_or_update_pr(self, head_branch: str, base_branch: str, title: str):
         """Creates a new PR or logs if one already exists."""
@@ -250,6 +297,11 @@ def main():
         help="Attempt to merge existing pull requests that are in a clean state."
     )
     parser.add_argument(
+        "--auto-resolve-docs",
+        action="store_true",
+        help="Attempt to auto-resolve merge conflicts in 'docs/api/v2/' by using the destination branch's version."
+    )
+    parser.add_argument(
         "--log-file",
         default=".log",
         help="Path to a file where logs will be stored. Logs are appended to the file."
@@ -285,7 +337,7 @@ def main():
     work_dir.mkdir(exist_ok=True)
     logging.info(f"Using working directory: {work_dir}")
 
-    syncer = BranchSyncer(config, github_token, str(work_dir), args.dry_run, args.merge_prs)
+    syncer = BranchSyncer(config, github_token, str(work_dir), args.dry_run, args.merge_prs, args.auto_resolve_docs)
     syncer.sync_all()
 
 
