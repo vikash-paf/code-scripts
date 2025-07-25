@@ -100,7 +100,7 @@ class BranchSyncer:
                         f"All conflicts are in 'docs/api/v2/'. Attempting to auto-resolve for "
                         f"'{base_branch}' -> '{dest_branch}'"
                     )
-                    self._auto_resolve_docs_conflict(base_branch, dest_branch)
+                    self._auto_resolve_docs_conflict(base_branch, dest_branch, conflicting_files)
                 else:
                     logging.error(
                         f"CONFLICT: Merge conflict detected between '{base_branch}' and '{dest_branch}'. "
@@ -120,7 +120,7 @@ class BranchSyncer:
             # Go back to a clean state for the next pair
             self.repo.git.checkout(self.gh_repo.default_branch)
 
-    def _auto_resolve_docs_conflict(self, base_branch: str, dest_branch: str):
+    def _auto_resolve_docs_conflict(self, base_branch: str, dest_branch: str, conflicting_files: list):
         """
         Resolves a documentation merge conflict by creating a new branch, merging with
         'ours' strategy, and creating a PR.
@@ -131,6 +131,15 @@ class BranchSyncer:
 
         resolution_branch = f"{self.conflict_prefix}{base_branch.replace('/', '_')}-into-{dest_branch.replace('/', '_')}"
         pr_title = f"[Automated Sync with Fix] Sync {base_branch} into {dest_branch}"
+
+        files_list_md = "\n".join(f"- `{f}`" for f in conflicting_files)
+        pr_body = (
+            "This is an automated pull request to sync changes from "
+            f"`{base_branch}` into `{dest_branch}`.\n\n"
+            "The following conflicts in `docs/api/v2/` were automatically resolved by "
+            "taking the version from the destination branch (`--ours` strategy):\n"
+            f"{files_list_md}"
+        )
 
         try:
             # Get a clean start on the destination branch
@@ -149,7 +158,7 @@ class BranchSyncer:
             self.repo.remotes.origin.push(resolution_branch, force=True)
 
             # Create a PR from the resolution branch to the original destination
-            self._create_or_update_pr(resolution_branch, dest_branch, pr_title)
+            self._create_or_update_pr(resolution_branch, dest_branch, pr_title, body=pr_body)
 
         except GitCommandError as e:
             logging.error(f"Failed to auto-resolve docs conflict for '{base_branch}' -> '{dest_branch}': {e}")
@@ -160,7 +169,7 @@ class BranchSyncer:
             except GitCommandError:
                 pass  # Branch might not exist if checkout failed early
 
-    def _create_or_update_pr(self, head_branch: str, base_branch: str, title: str):
+    def _create_or_update_pr(self, head_branch: str, base_branch: str, title: str, body: str = None):
         """Creates a new PR or logs if one already exists."""
         existing_pr = self._find_existing_pr(head_branch, base_branch)
 
@@ -175,10 +184,13 @@ class BranchSyncer:
             return
 
         logging.info(f"Creating new pull request: '{title}'")
-        body = (
-            "This is an automated pull request to sync changes from "
-            f"`{head_branch}` into `{base_branch}`."
-        )
+
+        if not body:
+            body = (
+                "This is an automated pull request to sync changes from "
+                f"`{head_branch}` into `{base_branch}`."
+            )
+
         try:
             pr = self.gh_repo.create_pull(title=title, body=body, head=head_branch, base=base_branch)
             logging.info(f"Successfully created PR: {pr.html_url}")
