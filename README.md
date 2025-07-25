@@ -12,6 +12,7 @@ This tool is designed to be run in a CI/CD environment (like GitHub Actions) or 
 - **Automated PR Creation**: Automatically creates pull requests for branches that are out of sync.
 - **Idempotent**: The script can be run multiple times without creating duplicate pull requests. It will update existing PRs by force-pushing the sync branch.
 - **Conflict Detection**: If a merge conflict occurs, the script will log the error and skip that branch pair, requiring manual intervention. It will not leave the repository in a conflicted state.
+- **Auto-resolve Docs Conflicts**: An option to automatically resolve merge conflicts for documentation files (`docs/api/v2/`) by favoring the destination branch's version.
 - **Clean Syncs Only**: It first checks if a sync is necessary before performing any operations, saving time and resources.
 - **Automatic Cleanup**: If a `base` branch is already fully merged into a `destination`, the script will automatically close any old, open sync PRs between them.
 - **Dry Run Mode**: A `--dry-run` flag allows you to see what the script *would* do without making any actual changes to your repository.
@@ -99,6 +100,13 @@ You can specify a different path for your configuration file using the `--config
 
 ```bash
 python scripts/auto_sync.py --config /path/to/my_special_config.json
+```
+
+### Auto-resolving Documentation Conflicts
+If you have frequent, simple merge conflicts in documentation files (specifically under `docs/api/v2/`), you can use the `--auto-resolve-docs` flag. This will automatically resolve these conflicts by choosing the version from the destination branch.
+
+```bash
+python scripts/auto_sync.py --auto-resolve-docs
 ```
 
 ## 🗓️ Automated Scheduling (Optional)
