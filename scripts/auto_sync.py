@@ -90,7 +90,12 @@ class BranchSyncer:
                 self.repo.git.merge("--abort")
                 logging.info("No conflicts detected. Proceeding with PR creation.")
             except GitCommandError:
-                logging.error(f"CONFLICT: Merge conflict detected between '{base_branch}' and '{dest_branch}'. Skipping PR creation.")
+                conflicting_files_str = self.repo.git.diff('--name-only', '--diff-filter=U')
+                conflicting_files = [f for f in conflicting_files_str.split('\n') if f]
+                logging.error(
+                    f"CONFLICT: Merge conflict detected between '{base_branch}' and '{dest_branch}'. "
+                    f"Conflicting files: [{', '.join(conflicting_files)}]. Skipping PR creation."
+                )
                 # Abort the merge to clean up the repository state
                 self.repo.git.merge("--abort")
                 return  # Skip this pair
