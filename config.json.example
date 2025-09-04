@@ -1,4 +1,5 @@
 {
+  "log_directory": ".logs",
   "repositories": [
     {
       "repo_url": "git@github.com:YourUsername/YourRepo.git",

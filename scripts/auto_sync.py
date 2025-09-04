@@ -314,13 +314,11 @@ def main():
         help="Attempt to auto-resolve merge conflicts in 'docs/api/v2/' by using the destination branch's version."
     )
     parser.add_argument(
-        "--log-file",
-        default=".log",
-        help="Path to a file where logs will be stored. Logs are appended to the file."
+        "--log-directory",
+        default=None,
+        help="Directory to store log files. Overrides 'log_directory' from config file."
     )
     args = parser.parse_args()
-
-    setup_logging(args.log_file)
 
     if args.dry_run:
         logging.info("--- Starting in DRY RUN mode. No changes will be pushed to GitHub. ---")
@@ -342,6 +340,11 @@ def main():
     except json.JSONDecodeError:
         logging.error(f"Invalid JSON in configuration file '{args.config}'")
         sys.exit(1)
+
+    # Set up logging
+    log_dir = args.log_directory or config.get("log_directory", ".logs")
+    log_file = Path(log_dir) / "auto_sync.log"
+    setup_logging(str(log_file))
 
     # Normalize config to a list of repositories for backward compatibility
     if "repositories" in config:
