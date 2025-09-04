@@ -1,24 +1,31 @@
 {
-  "repo_url": "git@github.com:YourUsername/YourRepo.git",
-  "conflict_branch_prefix": "sync/",
-  "branches": [
+  "repositories": [
     {
-      "base": "release-1.0",
-      "destinations": [
-        "release-1.1",
-        "release-1.2"
+      "repo_url": "git@github.com:YourUsername/YourRepo.git",
+      "conflict_branch_prefix": "sync/",
+      "branches": [
+        {
+          "base": "release-1.0",
+          "destinations": [
+            "release-1.1",
+            "release-1.2"
+          ]
+        },
+        {
+          "base": "release-1.1",
+          "destinations": [
+            "release-1.2"
+          ]
+        }
       ]
     },
     {
-      "base": "release-1.1",
-      "destinations": [
-        "release-1.2"
-      ]
-    },
-    {
-      "base": "develop",
-      "destinations": [
-        "main"
+      "repo_url": "git@github.com:YourUsername/AnotherRepo.git",
+      "branches": [
+        {
+          "base": "develop",
+          "destinations": [ "main" ]
+        }
       ]
     }
   ]
