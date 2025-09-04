@@ -318,6 +318,11 @@ def main():
         default=None,
         help="Directory to store log files. Overrides 'log_directory' from config file."
     )
+    parser.add_argument(
+        "--log-file",
+        default=None,
+        help="Path to a file where logs will be stored. Overrides --log-directory and config."
+    )
     args = parser.parse_args()
 
     if args.dry_run:
@@ -342,8 +347,11 @@ def main():
         sys.exit(1)
 
     # Set up logging
-    log_dir = args.log_directory or config.get("log_directory", ".logs")
-    log_file = Path(log_dir) / "auto_sync.log"
+    if args.log_file:
+        log_file = args.log_file
+    else:
+        log_dir = args.log_directory or config.get("log_directory", ".logs")
+        log_file = Path(log_dir) / "auto_sync.log"
     setup_logging(str(log_file))
 
     # Normalize config to a list of repositories for backward compatibility
