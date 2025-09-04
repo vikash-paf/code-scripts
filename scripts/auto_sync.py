@@ -343,14 +343,26 @@ def main():
         logging.error(f"Invalid JSON in configuration file '{args.config}'")
         sys.exit(1)
 
+    # Normalize config to a list of repositories for backward compatibility
+    if "repositories" in config:
+        repo_configs = config["repositories"]
+    else:
+        logging.warning("Configuration format is deprecated. Please wrap your repo config in a 'repositories' list.")
+        repo_configs = [config]
+
     # Define a persistent local directory for the repository clone to speed up subsequent runs.
-    script_dir = Path(__file__).resolve().parent
     work_dir = Path(".tmp")
     work_dir.mkdir(exist_ok=True)
-    logging.info(f"Using working directory: {work_dir}")
+    logging.info(f"Using shared working directory: {work_dir}")
 
-    syncer = BranchSyncer(config, github_token, str(work_dir), args.dry_run, args.merge_prs, args.auto_resolve_docs)
-    syncer.sync_all()
+    for repo_config in repo_configs:
+        repo_url = repo_config.get("repo_url")
+        if not repo_url:
+            logging.error("Repository configuration is missing 'repo_url'. Skipping.")
+            continue
+        logging.info(f"\n{'='*20} Processing repository: {repo_url} {'='*20}")
+        syncer = BranchSyncer(repo_config, github_token, str(work_dir), args.dry_run, args.merge_prs, args.auto_resolve_docs)
+        syncer.sync_all()
 
 
 if __name__ == "__main__":
